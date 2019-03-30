@@ -4,16 +4,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Sudoku AI Solver</title>
+
+    <style>
+        body {
+            font-family: "Arial", sans-serif;
+            margin: 0;
+            padding: 0;
+
+        }
+
+        #container {
+            padding: 20px;
+        }
+
+        h1 {
+            margin: 0;
+        }
+
+        img {
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
-    <h1>Sudoku Solver</h1>
-    <form action="/sudoku/sudoku:solve" method="POST" enctype="multipart/form-data">
-        <input type="file" name="image" id="uploadImageField">
-        <button type="submit">Submit</button>
-    </form>
+    <div id="container">
+        <h1>Sudoku Solver</h1>
+        <form action="/sudoku/sudoku:solve" method="POST" enctype="multipart/form-data">
+            <input type="file" name="image" id="uploadImageField">
+            <button type="submit">Submit</button>
+        </form>
 
-    <div id="solved">
-        <img alt="Solved sudoku" id="solved-image">
+        <div id="solved">
+            <img alt="Solved sudoku" id="solved-image">
+        </div>
     </div>
 </body>
 <script src="https://eamonma.com/m.js"></script>
