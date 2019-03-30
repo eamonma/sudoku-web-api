@@ -39,7 +39,6 @@
         </form>
 
         <div id="solved">
-            <img alt="Solved sudoku" id="solved-image">
         </div>
     </div>
 </body>
@@ -75,7 +74,7 @@
 
         Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
             console.log(r.url);
-            m.get("#solved-image").src = "/sudoku" + r.url
+            m.get("#solved").innerHTML = "<img src=\"" + "/sudoku" + r.url + "\">"
         })
     }
 </script>
