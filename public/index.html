@@ -46,7 +46,7 @@
 
         formData.append("image", m.get("#uploadImageField").files[0])
 
-        Image.getImage("/sudoku:solve", formData, (e, r) => {
+        Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
             console.log(r.url);
             m.get("#solved-image").src = r.url
         })
