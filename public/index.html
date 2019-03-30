@@ -75,7 +75,7 @@
         Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
             console.log(r.url);
             if(r.error) {
-                m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting.</p>"
+                return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting.</p>"
             }
             m.get("#solved").innerHTML = "<img src=\"" + "/sudoku" + r.url + "\">"
         })
