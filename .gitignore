@@ -1,3 +1,6 @@
-python/
-img/
-uploads/
+# python/
+# img/
+# uploads/
+python/assets
+python/ocr/chars_test
+python/ocr/chars_train
