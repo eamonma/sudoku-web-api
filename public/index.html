@@ -28,7 +28,9 @@
             margin: auto;
             display: flex;
             flex-direction: column;
-            flex-grow: 1;
+            flex: 1;
+            height: auto;
+            overflow: auto
         }
 
         h1 {
@@ -42,6 +44,11 @@
 
         #unsolved-image {
             filter: blur(5px)
+        }
+
+        #solved {
+            flex: 1;
+            height: auto;
         }
 
         footer {
