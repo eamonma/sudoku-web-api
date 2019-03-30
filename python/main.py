@@ -14,8 +14,9 @@ try:
     model = load_model('./python/ocr/model_02.hdf5')
     img_dims = 64
 except OSError:
-    print('Main model not found, loading secondary model...')
+    print('Before Main model not found, loading secondary model...')
     model = load_model('./python/ocr/model.hdf5')
+    print("After")
     img_dims = 32
 
 model.compile(loss=keras.losses.categorical_crossentropy,
