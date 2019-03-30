@@ -9,6 +9,8 @@ const app = express()
 
 const socketio = require("socket.io")
 
+let filename;
+
 const storage = multer.diskStorage({
     destination(req, file, cb) {
         console.log("Uploading...");
@@ -69,13 +71,19 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
                 url: message.substring(15, message.length)
             })
 
+            fs.unlink(path.join(__dirname, "../uploads/" + filename), (e) => {
+                if(e) {
+                    console.log(e);
+                }
+            })
+
             setTimeout(() => {
                 fs.unlink(path.join(__dirname, "." + message.substring(7, message.length)), (e) => {
                     if(e) {
                         console.log(e);
                     }
                 })
-            }, 60000)
+            }, 30000)
 
             return console.log("Public URL:" + message.substring(15, message.length));
         }
