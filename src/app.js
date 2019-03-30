@@ -7,12 +7,16 @@ const path = require("path")
 const port = process.env.PORT || 3001
 const app = express()
 
+const socketio = require("socket.io")
+
 const storage = multer.diskStorage({
     destination(req, file, cb) {
+        console.log("Uploading...");
+        
         cb(null, './uploads')
     },
     filename(req, file, cb) {
-        filename = file.fieldname + '-' + Date.now()
+        filename = file.fieldname + '-' + Date.now() + ".jpg"
         cb(null, filename)
     }
   })
@@ -39,22 +43,48 @@ app.post("/sudoku:solve", upload.single("image"), (req, res) => {
         try {
             filePath = req.file.path
         } catch(e) {
-            return res.status(400).send({image: "Please upload a valid image."})
+            return res.status(400).send({error: "Please upload a valid image."})
         }
     }
     
-    var args = ["-f", "./" + filePath, "-j", "./JSONimages"]
+    var args = ["-f", "./" + filePath, "-s", "./public/solved"]
+
+
+    let shell = new PythonShell("./python/main.py", { 
+        mode: "text",
+        args
+    })
+
+    shell.on("message", (message) => {
+
+        if(message.substring(0, 6) === "Error:") {
+            res.send({
+                error: message
+            })
+            return console.log("Big error " + message);
+        }
+
+        if(message.substring(0, 6) === "Saved:") {
+            res.send({
+                url: message.substring(15, message.length)
+            })
+
+            setTimeout(() => {
+                fs.unlink(path.join(__dirname, "." + message.substring(7, message.length)), (e) => {
+                    if(e) {
+                        console.log(e);
+                    }
+                })
+            }, 60000)
+
+            return console.log("Public URL:" + message.substring(15, message.length));
+        }
+    
+        console.log(message);
+    })
 })
 
-let shell = new PythonShell("./python/main.py", { 
-    mode: "text",
-    // args: ["-w"]
-    args: ["-f", "./img/c1.jpg", "-s"]
- })
 
-shell.on("message", (message) => {
-    console.log(message);
-})
 
 // PythonShell.run("./python/main.py", {
 //     mode: "text",
@@ -63,3 +93,8 @@ shell.on("message", (message) => {
 //     console.log(e)
 //     console.log(results);
 // })
+
+app.listen(3000, () => {
+    console.log("Server up on port 3000");
+    
+})

@@ -1,0 +1,55 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sudoku AI Solver</title>
+</head>
+<body>
+    <h1>Sudoku Solver</h1>
+    <form action="/sudoku:solve" method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" id="uploadImageField">
+        <button type="submit">Submit</button>
+    </form>
+
+    <div id="solved">
+        <img alt="Solved sudoku" id="solved-image">
+    </div>
+</body>
+<script src="https://eamonma.com/m.js"></script>
+<script>
+
+    const Image = {
+        getImage(url, formData, cb) {
+            const req = new XMLHttpRequest();
+            req.open("POST", url, true)
+            req.send(formData)
+            req.onreadystatechange = () => {
+                if(req.readyState === 4 && cb) {
+                    try {
+                        cb(undefined, JSON.parse(req.responseText));
+                    } catch(e) {
+                        cb(e);
+                    }
+                } else if(!cb) {
+                    return JSON.parse(req.responseText)
+                }
+            }
+        }
+    }
+
+    const form = m.get("form")
+
+    form.onsubmit = (e) => {
+        e.preventDefault()
+        let formData = new FormData();
+
+        formData.append("image", m.get("#uploadImageField").files[0])
+
+        Image.getImage("/sudoku:solve", formData, (e, r) => {
+            console.log(r.url);
+            m.get("#solved-image").src = r.url
+        })
+    }
+</script>
+</html>
