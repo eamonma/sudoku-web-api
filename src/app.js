@@ -35,7 +35,7 @@ const upload = multer({
     }
 })
 
-app.use("sudoku", express.static(path.join(__dirname, "../public")))
+app.use("/sudoku/", express.static(path.join(__dirname, "../public")))
 
 app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
     let filePath
