@@ -48,7 +48,7 @@
 
         Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
             console.log(r.url);
-            m.get("#solved-image").src = r.url
+            m.get("#solved-image").src = "/sudoku" + r.url
         })
     }
 </script>
