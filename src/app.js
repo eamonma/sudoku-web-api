@@ -68,7 +68,7 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
 
         if(message.substring(0, 6) === "Saved:") {
             res.send({
-                url: message.substring(15, message.length)
+                url: "/sudoku" + message.substring(15, message.length)
             })
 
             fs.unlink(path.join(__dirname, "../uploads/" + filename), (e) => {

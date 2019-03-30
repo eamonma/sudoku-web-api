@@ -200,7 +200,7 @@
     </div>
 
     <footer>
-        <p>View on <a href="https://github.com/AliShazly/sudoku-py">GitHub</a>. <br> 2019 <a href="../">Ali Shazly</a>, with <a href="https://eamon.me">Eamon Ma</a>.</p>
+        <p>View on <a href="https://github.com/AliShazly/sudoku-py">GitHub</a>. <br> 2019 <a href="../">Ali Shazly</a>, with <a href="https://eamon.me">Eamon Ma</a>. View <a href="docs">API docs</a></p>
     </footer>
 
     <div id="loading-container">
@@ -265,7 +265,7 @@
                 return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting.</p>"
             }
             m.get("#unsolved-image").classList.add("fadeOut")
-            m.get("#solved").innerHTML = "<img class=\"animated fadeIn\" id=\"solved-image\" src=\"" + "/sudoku" + r.url + "\">"
+            m.get("#solved").innerHTML = "<img class=\"animated fadeIn\" id=\"solved-image\" src=\"" + r.url + "\">"
             showLoadingIcon(m.get("#loading-container"))
         })
     }

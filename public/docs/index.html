@@ -1,0 +1,81 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Sudoku Solver API Docs</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Roboto", sans-serif;
+            margin: auto;
+            max-width: 1024px;
+            padding: 20px;
+        }
+
+        h2 {
+            padding-top: 10px;
+        }
+
+        pre, .pre-inline {
+            font-family: monospace;
+            background: #ededed;
+            padding: 8px;
+            font-size: 14px;
+            line-height: 14px;
+            border-radius: 5px;
+        }
+
+        pre {
+            overflow: scroll;
+        }
+
+        p {
+            line-height: 35px;
+        }
+
+        section {
+            border-bottom: 1px solid #a2a2a2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sudoku Solver API Docs</h1>
+    <section>
+        <h2 id="introduction">Introduction</h2>
+        <p>Sudoku-py is an augmented reality sudoku solver using OpenCV. <a href="../">Sudoku Solver</a> is a web API for the <a href="https://github.com/AliShazly/sudoku-py">original Python implementation</a>.</p>
+    </section>
+    <section>
+        <h2 id="using">Using the API</h2>
+        <h3 id="solve">Solve a sudoku puzzle</h3>
+        <pre>POST https://alishazly.com/sudoku/sudoku:solve</pre>
+        <p>POST with a Content-Type of <span class="pre-inline">multipart/form-data</span>, and a body with <span class="pre-inline">form-data</span>. In the body, there should be only one key-value pair, with the key being <span class="pre-inline">image</span>, and the body of said key a sudoku puzzle.</p>
+
+        <h3 id="response">Response</h3>
+        <p>If the server solves the puzzle successfully, there will be a JSON response, with a single property: <span class="pre-inline">url</span>. This is, in fact, a relative URL to the domain root.</p>
+        <p>If the server, for some reason, cannot solve the puzzle, there will also be a single property on the JSON response: <span class="pre-inline">error</span>, with an OpenCV error displayed.</p>
+        <p>Note: if the application simply cannot find a puzzle, the response is as if it had succeeded, with a URL to the original image.</p>
+        <h3 id="sample-response">Sample response</h3>
+        <p>Success:</p>
+        <pre>
+{
+    "url": "/solved/arB7kOhd.jpg"
+}
+        </pre>
+        <p>Failure:</p>
+        <pre>
+{
+    "error": "Error: Image not solvable: cannot reshape array of size 79 into shape (9,9)"
+}
+        </pre>
+    </section>
+    <section>
+        <h2 id="longevity">Longevity</h2>
+        <p>The server keeps the solved image at the responded URL for 30 seconds, after which it will be deleted.</p>
+    </section>
+    <footer>
+        <p>&copy; 2019, <a href="https://eamon.me">Eamon Ma</a>.</p>
+    </footer>
+
+</body>
+</html>
