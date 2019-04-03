@@ -2,6 +2,7 @@ const { PythonShell } = require("python-shell")
 const express = require("express")
 const fs = require("fs")
 const multer = require("multer")
+const sharp = require("sharp")
 const path = require("path")
 
 const port = process.env.PORT || 3001
@@ -11,23 +12,22 @@ const socketio = require("socket.io")
 
 let filename;
 
-const storage = multer.diskStorage({
-    destination(req, file, cb) {
-        console.log("Uploading...");
+// const storage = multer.diskStorage({
+//     destination(req, file, cb) {
+//         console.log("Uploading...");
         
-        cb(null, './uploads')
-    },
-    filename(req, file, cb) {
-        const ext = file.mimetype.split("/")[1];
-        filename = file.fieldname + '-' + Date.now() + "." + ((ext === "jpeg") ? ("jpg") : (ext))
-        console.log(filename);
+//         cb(null, './uploads')
+//     },
+//     filename(req, file, cb) {
+//         const ext = file.mimetype.split("/")[1];
+//         filename = file.fieldname + '-' + Date.now() + "." + ((ext === "jpeg") ? ("jpg") : (ext))
+//         console.log(filename);
         
-        cb(null, filename)
-    }
-  })
+//         cb(null, filename)
+//     }
+// })
   
 const upload = multer({
-    storage: storage,
     limits: {
         fileSize: 20000000
     },
@@ -42,7 +42,7 @@ const upload = multer({
 
 app.use("/sudoku/", express.static(path.join(__dirname, "../public")))
 
-app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
+app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
     let filePath
     if(!req.body.url) {
         try {
@@ -51,16 +51,32 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
             return res.status(400).send({Error: "Please upload a valid image."})
         }
     }
+
+    const buffer = await sharp(req.file.buffer)
+        .jpeg()
+        .toBuffer();
+
+        // const ext = req.file.mimetype.split("/")[1];
+        filename = req.file.fieldname + '-' + Date.now() + ".jpg"
+        absFilePath = (path.join(__dirname, "../uploads/") + filename);
+        filePath = "./uploads/" + filename
+        fs.writeFile(absFilePath, buffer, (e) => {
+            if(e) {
+                console.log(e); 
+            }
+            console.log(filePath);
+            
+        })
+    
     
     var args = ["-f", "./" + filePath, "-s", "./public/solved"]
-
 
     setTimeout(() => {
             fs.unlink(path.join(__dirname, "../uploads/" + filename), (e) => {
             if(e) {
                 console.log(e);
             }
-            console.log(path.join(__dirname, "../uploads/" + filename));
+            console.log("Deleted: " + path.join(__dirname, "../uploads/" + filename));
             
         })
     }, 60000)
@@ -90,7 +106,7 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), (req, res) => {
                         if(e) {
                             console.log(e);
                         }
-                        console.log(path.join(__dirname, "." + message.substring(7, message.length)));
+                        console.log("Deleted: " + path.join(__dirname, "." + message.substring(7, message.length)));
                         
                     })
                 }, 30000)
