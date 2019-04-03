@@ -1,5 +1,6 @@
-import argparse
 from random import choices
+import argparse
+import sys
 
 import cv2
 import keras
@@ -14,9 +15,8 @@ try:
     model = load_model('./python/ocr/model_02.hdf5')
     img_dims = 64
 except OSError:
-    print('Before Main model not found, loading secondary model...')
+    print('Main model not found, loading secondary model...')
     model = load_model('./python/ocr/model.hdf5')
-    print("After")
     img_dims = 32
 
 model.compile(loss=keras.losses.categorical_crossentropy,
@@ -73,7 +73,7 @@ def get_corners(img):
     return corners
 
 
-def transform(pts, img):
+def transform(pts, img):  # TODO: Spline transform, remove this
     pts = np.float32(pts)
     top_l, top_r, bot_l, bot_r = pts[0], pts[1], pts[2], pts[3]
 
@@ -90,8 +90,7 @@ def transform(pts, img):
     return warped
 
 
-def extract_lines(img):
-    length = 12
+def get_grid_lines(img, length=12):
     horizontal = np.copy(img)
     cols = horizontal.shape[1]
     horizontal_size = cols // length
@@ -106,6 +105,18 @@ def extract_lines(img):
     vertical = cv2.erode(vertical, vertical_structure)
     vertical = cv2.dilate(vertical, vertical_structure)
 
+    return vertical, horizontal
+
+
+def spline_transform(img, vertical, horizontal):
+    # TODO: Try cropping the image to the corners,
+    #  but erode the area a little bit, making it include the outer parts of the puzzle
+    img_points = cv2.bitwise_and(vertical, horizontal)
+    kernel = np.ones((2, 2), np.uint8)
+    denoise = cv2.morphologyEx(img_points, cv2.MORPH_OPEN, kernel)
+
+
+def create_grid_mask(vertical, horizontal):
     grid = cv2.add(horizontal, vertical)
     grid = cv2.adaptiveThreshold(grid, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 235, 2)
     grid = cv2.dilate(grid, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)), iterations=2)
@@ -134,12 +145,27 @@ def extract_lines(img):
 def extract_digits(img):
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     img_area = img.shape[0] * img.shape[1]
+    # Reversing contours list to loop with y coord ascending, and removing small bits of noise
+    contours_denoise = [i for i in contours[::-1] if cv2.contourArea(i) > img_area * .0005]
+    _, y_compare, _, _ = cv2.boundingRect(contours_denoise[0])
     digits = []
-    for i in contours:
+    row = []
+
+    for i in contours_denoise:
         x, y, w, h = cv2.boundingRect(i)
-        if cv2.contourArea(i) > img_area * .0005:  # and round(w / h, 2) in (x / 100 for x in range(60, 91))
-            cropped = img[y:y + h, x:x + w]
-            digits.append(cropped)
+        cropped = img[y:y + h, x:x + w]
+        if y - y_compare > img.shape[1] // 40:
+            row = [i[0] for i in sorted(row, key=lambda x: x[1])]
+            for j in row:
+                digits.append(j)
+            row = []
+        row.append((cropped, x))
+        y_compare = y
+    # Last loop doesn't add row
+    row = [i[0] for i in sorted(row, key=lambda x: x[1])]
+    for i in row:
+        digits.append(i)
+
     return digits
 
 
@@ -156,7 +182,9 @@ def add_border(img_arr):
             digits.append(border)
         except cv2.error:
             continue
-    return digits
+    dims = (digits[0].shape[0],) * 2
+    digits_square = [cv2.resize(i, dims, interpolation=cv2.INTER_NEAREST) for i in digits]
+    return digits_square
 
 
 def subdivide(img, divisions=9):
@@ -169,19 +197,18 @@ def subdivide(img, divisions=9):
     return [i for i in subdivided]
 
 
-def sort_digits(subd_arr, template_arr, img_dims):
-    sorted_digits = []
-    for img in subd_arr:
-        if np.sum(img) < 255 * img.shape[0]:  # Accounting for small amounts of noise in blank pixel spaces
-            sorted_digits.append(np.zeros((img_dims, img_dims), dtype='uint8'))
-            continue
-        for template in template_arr:
-            res = cv2.matchTemplate(img, template, cv2.TM_CCORR_NORMED)
-            loc = np.array(np.where(res >= .9))
-            if loc.size != 0:
-                sorted_digits.append(template)
-                break
-    return sorted_digits
+def add_zeros(sorted_arr, subd_arr):
+    h, w = sorted_arr[0].shape
+    puzzle_template = np.zeros((81, h, w), dtype=np.uint8)
+    sorted_arr_idx = 0
+    for i, j in enumerate(subd_arr):
+        if np.sum(j) < 9000:
+            zero = np.zeros((h, w), dtype=np.uint8)
+            puzzle_template[i] = zero
+        else:
+            puzzle_template[i] = sorted_arr[sorted_arr_idx]
+            sorted_arr_idx += 1
+    return puzzle_template
 
 
 def img_to_array(img_arr, img_dims):
@@ -201,7 +228,7 @@ def img_to_array(img_arr, img_dims):
     return puzzle
 
 
-def put_solution(img_arr, soln_arr, unsolved_arr):
+def put_solution(img_arr, soln_arr, unsolved_arr, font_color, font_path):
     solutions = np.array(soln_arr).reshape(81)
     unsolveds = np.array(unsolved_arr).reshape(81)
     paired = list((zip(solutions, unsolveds, img_arr)))
@@ -214,10 +241,10 @@ def put_solution(img_arr, soln_arr, unsolved_arr):
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(img_rgb)
         draw = ImageDraw.Draw(pil_img)
-        fnt = ImageFont.truetype('./python/assets/FreeMono.ttf', img_h)
+        fnt = ImageFont.truetype(font_path, img_h)
         font_w, font_h = draw.textsize(str(solution), font=fnt)
         draw.text(((img_w - font_w) / 2, (img_h - font_h) / 2 - img_h // 10), str(solution),
-                  fill=((0, 127, 255) if len(img.shape) > 2 else 0), font=fnt)
+                  fill=(font_color if len(img.shape) > 2 else 0), font=fnt)
         cv2_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
         img_solved.append(cv2_img)
     return img_solved
@@ -247,32 +274,58 @@ def inverse_perspective(img, dst_img, pts):
     return dst_img
 
 
-def solve_image(fp):
+def solve_image(fp, font_color, font_path):
+    if font_color is None:
+        font_color = (0, 127, 255)
+    if font_path is None:
+        font_path = './python/assets/FreeMono.ttf'
+
     try:
         img = resize_keep_aspect(cv2.imread(fp, cv2.IMREAD_COLOR))
-        processed = process(img)
-        corners = get_corners(processed)
-        warped = transform(corners, processed)
-        mask = extract_lines(warped)
-        numbers = cv2.bitwise_and(warped, mask)
-        digits_unsorted = extract_digits(numbers)
-        digits_subd = subdivide(numbers)
-        digits_sorted = sort_digits(digits_subd, digits_unsorted, img_dims)
-        digits_border = add_border(digits_sorted)
-        puzzle = img_to_array(digits_border, img_dims)
-        solved = solve(puzzle.copy().tolist())  # Solve function modifies original puzzle var
-        warped_img = transform(corners, img)
-        subd = subdivide(warped_img)
-        subd_soln = put_solution(subd, solved, puzzle)
-        warped_soln = stitch_img(subd_soln, (warped_img.shape[0], warped_img.shape[1]))
-        warped_inverse = inverse_perspective(warped_soln, img.copy(), np.array(corners))
-        return warped_inverse
-    except Exception as e:
-        print(f'Error: Image not solvable: {e}')
-        return None
+    except AttributeError:
+        sys.stderr.write('Error: Image path not valid')
+        sys.exit()
+
+    processed = process(img)
+    corners = get_corners(processed)
+    warped = transform(corners, processed)
+    vertical_lines, horizontal_lines = get_grid_lines(warped)
+    mask = create_grid_mask(vertical_lines, horizontal_lines)
+    numbers = cv2.bitwise_and(warped, mask)
+    digits_sorted = extract_digits(numbers)
+    digits_border = add_border(digits_sorted)
+    digits_subd = subdivide(numbers)
+
+    try:
+        digits_with_zeros = add_zeros(digits_border, digits_subd)
+    except IndexError:
+        sys.stderr.write('Error: Image too warped')
+        sys.exit()
+
+    try:
+        puzzle = img_to_array(digits_with_zeros, img_dims)
+    except AttributeError:
+        sys.stderr.write('Error: OCR predictions failed')
+        sys.exit()
+
+    solved = solve(puzzle.copy().tolist())  # Solve function modifies original puzzle var
+    if not solved:
+        raise ValueError('Error: Puzzle not solvable')
+
+    warped_img = transform(corners, img)
+    subd = subdivide(warped_img)
+    subd_soln = put_solution(subd, solved, puzzle, font_color, font_path)
+    warped_soln = stitch_img(subd_soln, (warped_img.shape[0], warped_img.shape[1]))
+    warped_inverse = inverse_perspective(warped_soln, img.copy(), np.array(corners))
+    return warped_inverse
 
 
-def solve_webcam(debug=False):
+def solve_webcam(font_color, font_path, debug=False):
+    if font_color is None:
+        font_color = (0, 127, 255)
+    if font_path is None:
+        font_path = 'assets/FreeMono.ttf'
+
     cap = cv2.VideoCapture(0)
     stored_soln = []
     stored_puzzle = []
@@ -286,7 +339,8 @@ def solve_webcam(debug=False):
             processed = process(img)
             corners = get_corners(processed)
             warped = transform(corners, processed)
-            mask = extract_lines(warped)
+            vertical_lines, horizontal_lines = get_grid_lines(warped)
+            mask = create_grid_mask(vertical_lines, horizontal_lines)
 
             # Checks to see if the mask matches a grid-like structure
             template = cv2.resize(grid, (warped.shape[0],) * 2, interpolation=cv2.INTER_NEAREST)
@@ -299,7 +353,7 @@ def solve_webcam(debug=False):
             if stored_soln and stored_puzzle:
                 warped_img = transform(corners, img)
                 subd = subdivide(warped_img)
-                subd_soln = put_solution(subd, stored_soln, stored_puzzle)
+                subd_soln = put_solution(subd, stored_soln, stored_puzzle, font_color, font_path)
                 warped_soln = stitch_img(subd_soln, (warped_img.shape[0], warped_img.shape[1]))
                 warped_inverse = inverse_perspective(warped_soln, img, np.array(corners))
                 cv2.imshow('frame', warped_inverse)
@@ -308,11 +362,11 @@ def solve_webcam(debug=False):
                 continue
 
             numbers = cv2.bitwise_and(warped, mask)
-            digits_unsorted = extract_digits(numbers)
-            digits_subd = subdivide(numbers)
-            digits_sorted = sort_digits(digits_subd, digits_unsorted, img_dims)
+            digits_sorted = extract_digits(numbers)
             digits_border = add_border(digits_sorted)
-            puzzle = img_to_array(digits_border, img_dims)
+            digits_subd = subdivide(numbers)
+            digits_with_zeros = add_zeros(digits_border, digits_subd)
+            puzzle = img_to_array(digits_with_zeros, img_dims)
 
             if np.sum(puzzle) == 0:
                 raise ValueError('False positive')
@@ -331,7 +385,7 @@ def solve_webcam(debug=False):
 
             warped_img = transform(corners, img)
             subd = subdivide(warped_img)
-            subd_soln = put_solution(subd, solved, puzzle)
+            subd_soln = put_solution(subd, solved, puzzle, font_color, font_path)
             warped_soln = stitch_img(subd_soln, (warped_img.shape[0], warped_img.shape[1]))
             warped_inverse = inverse_perspective(warped_soln, img, np.array(corners))
             cv2.imshow('frame', warped_inverse)
@@ -347,35 +401,41 @@ def solve_webcam(debug=False):
             continue
 
 
-parser = argparse.ArgumentParser()
-inputs = parser.add_mutually_exclusive_group()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    inputs = parser.add_mutually_exclusive_group()
 
-inputs.add_argument('-f', '--file', type=str,
-                    help='File path to an image of a sudoku puzzle')
-parser.add_argument('-s', '--save', type=str,
-                    help='Save image to specified directory')
-inputs.add_argument('-w', '--webcam', action='store_true',
-                    help='Use webcam to solve sudoku puzzle in real time (EXPERIMENTAL)')
-parser.add_argument('-d', '--debug', action='store_true',
-                    help='Enables debug information output')
+    inputs.add_argument('-f', '--file', type=str,
+                        help='File path to an image of a sudoku puzzle')
+    parser.add_argument('-s', '--save', type=str,
+                        help='Save image to specified directory')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Enables debug information output')
+    parser.add_argument('-fnt', '--font', type=str,
+                        help='Relative path to a .ttf file for font')
+    parser.add_argument('-c', '--color', type=str,
+                        help='Changes font color, accepts R,G,B input')
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-if args.webcam:
-    if args.debug:
-        solve_webcam(debug=True)
-    else:
-        print('Using webcam input. Press "q" to exit.')
-        solve_webcam()
-else:
-    solved = solve_image(args.file)
-    if solved is None:
-        raise SystemExit
+    font_color = tuple([int(i) for i in args.color.split(',')]) if args.color else None
+    font_path = args.font if args.font else None
+
     if args.save:
-        string_upper, string_lower, digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'
-        rand_string = ''.join(choices(string_upper + string_lower + digits, k=8))
-        cv2.imwrite(f'{args.save}/{rand_string}.{args.file[-3:]}', solved)
-        print(f'Saved: {args.save}/{rand_string}.{args.file[-3:]}')
+        try: 
+            solved = solve_image(args.file, font_color, font_path)
+            if args.save:
+                string_upper, string_lower, digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'
+                rand_string = ''.join(choices(string_upper + string_lower + digits, k=8))
+                cv2.imwrite(f'{args.save}/{rand_string}.{args.file[-3:]}', solved)
+                print(f'Saved: {args.save}/{rand_string}.{args.file[-3:]}')
+        except Exception as e:
+            print("Error: Unable to solve")
+            
+        # file_name = args.file[:-4]
+        # file_ext = args.file[-3:]
+        # cv2.imwrite(f'{file_name}_solved.{file_ext}', solved)
+        # print(f'Saved: {file_name}_solved.{file_ext}')
     else:
         print('Solving...')
         show(solved)
