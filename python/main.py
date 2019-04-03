@@ -11,11 +11,11 @@ from keras.models import load_model
 from solve_puzzle import solve, check_if_solvable, verify
 
 try:
-    print('Loading model...')
+    # print('Loading model...')
     model = load_model('./python/ocr/model_02.hdf5')
     img_dims = 64
 except OSError:
-    print('Main model not found, loading secondary model...')
+    # print('Main model not found, loading secondary model...')
     model = load_model('./python/ocr/model.hdf5')
     img_dims = 32
 

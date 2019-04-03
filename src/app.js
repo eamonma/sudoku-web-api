@@ -32,7 +32,7 @@ const upload = multer({
         fileSize: 20000000
     },
     fileFilter(req, file, cb) {
-        if(!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+        if(!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {
             return cb("Error: Upload an image!", false)
         }
         
@@ -69,17 +69,7 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
         })
     
     
-    var args = ["-f", "./" + filePath, "-s", "./public/solved"]
-
-    setTimeout(() => {
-            fs.unlink(path.join(__dirname, "../uploads/" + filename), (e) => {
-            if(e) {
-                console.log(e);
-            }
-            console.log("Deleted: " + path.join(__dirname, "../uploads/" + filename));
-            
-        })
-    }, 60000)
+    var args = ["-f", "./" + filePath, "-s", "./public/solved", "-c", "192,57,43"]
 
     try {
         let shell = new PythonShell("./python/main.py", { 
@@ -91,7 +81,7 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
 
             if(message.substring(0, 6) === "Error:") {
                 res.send({
-                    error: message
+                    error: message.substring(6, message.length)
                 })
                 console.log("Big error " + message);
             }
@@ -120,6 +110,16 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
             error: message
         })
     }
+
+    setTimeout(() => {
+        fs.unlink(path.join(__dirname, "../uploads/" + filename), (e) => {
+        if(e) {
+            console.log(e);
+        }
+        console.log("Deleted: " + path.join(__dirname, "../uploads/" + filename));
+        
+        })
+    }, 180000)
 })
 
 

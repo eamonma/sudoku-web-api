@@ -266,10 +266,14 @@
         formData.append("image", m.get("#uploadImageField").files[0])
 
         Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
+            if(e) {
+                console.log(e);
+                
+            }
             console.log(r.url);
             if(r.error) {
                 showLoadingIcon(m.get("#loading-container"))
-                return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting.</p>"
+                return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting. Error was: <pre>" + r.error + "</pre></p>";
             }
             m.get("#unsolved-image").classList.add("fadeOut")
             m.get("#solved").innerHTML = "<img class=\"animated fadeIn\" id=\"solved-image\" src=\"" + r.url + "\">"
