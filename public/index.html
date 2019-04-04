@@ -261,11 +261,15 @@
 
     form.onsubmit = (e) => {
         e.preventDefault()
+        if(!m.get("#uploadImageField").value) {
+            return m.get("#solved").innerHTML = "<p>Select an image!</p>"
+        }
         let formData = new FormData();
         showLoadingIcon(m.get("#loading-container"))
         formData.append("image", m.get("#uploadImageField").files[0])
 
         Image.getImage("/sudoku/sudoku:solve", formData, (e, r) => {
+            m.get("#uploadImageField").value = "";
             if(e) {
                 console.log(e);
                 
