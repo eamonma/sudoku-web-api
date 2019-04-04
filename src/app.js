@@ -55,21 +55,19 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
     const buffer = await sharp(req.file.buffer)
         .jpeg()
         .toBuffer();
-
-        // const ext = req.file.mimetype.split("/")[1];
-        filename = req.file.fieldname + '-' + Date.now() + ".jpg"
-        absFilePath = (path.join(__dirname, "../uploads/") + filename);
-        filePath = "./uploads/" + filename
-        fs.writeFile(absFilePath, buffer, (e) => {
-            if(e) {
-                console.log(e); 
-            }
-            console.log(filePath);
-            
-        })
     
+    filename = req.file.fieldname + '-' + Date.now() + ".jpg"
+    absFilePath = (path.join(__dirname, "../uploads/") + filename);
+    filePath = "./uploads/" + filename
+    fs.writeFile(absFilePath, buffer, (e) => {
+        if(e) {
+            console.log(e); 
+        }
+        console.log(filePath);
+        
+    })
     
-    var args = ["-f", "./" + filePath, "-s", "./public/solved", "-c", "192,57,43"]
+    let args = ["-f", "./" + filePath, "-s", "./public/solved", "-c", "192,57,43"]
 
     try {
         let shell = new PythonShell("./python/main.py", { 
@@ -119,7 +117,7 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
         console.log("Deleted: " + path.join(__dirname, "../uploads/" + filename));
         
         })
-    }, 180000)
+    }, 360000)
 })
 
 app.listen(port, () => {

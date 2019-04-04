@@ -34,7 +34,7 @@
         }
 
         h1 {
-            margin: 0 0 20px 0;
+            margin: 0;
         }
 
         img {
@@ -43,7 +43,7 @@
         }
 
         #unsolved-image {
-            filter: blur(2px)
+            filter: blur(1px)
         }
 
         #solved {
@@ -52,9 +52,69 @@
         }
 
         footer {
-            margin: 0 0 0 0;
+            margin: 0;
             width: 100%;
             padding: 0 20px 5px 20px;
+            background: #efefee;
+        }
+
+        footer p {
+            line-height: 25px;
+        }
+
+
+        #loading-container, #drop {
+            visibility: hidden;
+            background: rgb(255, 255, 255);
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #drop {
+            box-shadow: 0 0 50px 10px #555 inset;
+        }
+
+        #drop p {
+            font-size: 2em;
+            width: 100%;
+            margin: 0;
+            text-align: center;
+        }
+
+        a {
+            display: inline-block;
+            padding: 2px;
+            transition: 0.3s;
+            border-radius: 5px;
+        }
+
+        a, a:visited, a:active {
+            color: #0078D7;
+        }
+
+        a:hover {
+            color: #0063B1;
+            background-color: #f3f3f3;
+            transform: scale(1.04)
+        }
+
+        pre {
+            background: #ededed;
+            padding: 15px;
+            border-radius: 5px;
         }
 
         .sk-circle {
@@ -159,57 +219,32 @@
         -webkit-animation-delay: -0.1s;
                 animation-delay: -0.1s; }
 
-            @-webkit-keyframes sk-circleBounceDelay {
-            0%, 80%, 100% {
-                -webkit-transform: scale(0);
-                        transform: scale(0);
-            } 40% {
-                -webkit-transform: scale(1);
-                        transform: scale(1);
-            }
-            }
+        @-webkit-keyframes sk-circleBounceDelay {
+        0%, 80%, 100% {
+            -webkit-transform: scale(0);
+                    transform: scale(0);
+        } 40% {
+            -webkit-transform: scale(1);
+                    transform: scale(1);
+        }
+        }
 
-            @keyframes sk-circleBounceDelay {
-            0%, 80%, 100% {
-                -webkit-transform: scale(0);
-                        transform: scale(0);
-            } 40% {
-                -webkit-transform: scale(1);
-                        transform: scale(1);
-            }
-            }
+        @keyframes sk-circleBounceDelay {
+        0%, 80%, 100% {
+            -webkit-transform: scale(0);
+                    transform: scale(0);
+        } 40% {
+            -webkit-transform: scale(1);
+                    transform: scale(1);
+        }
+        }
 
-            #loading-container, #drop {
-                z-index: -999;
-                background: rgba(255, 255, 255, 0.7);
-                width: 100%;
-                height: 100%;
-                position: absolute;
-                top: 0;
-                right: 0;
-                bottom: 0;
-                left: 0;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                opacity: 0;
-                transition: 0.2s;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-
-            #drop p {
-                font-size: 2em;
-                width: 100%;
-                margin: 0;
-                text-align: center;
-            }
     </style>
 </head>
 <body>
     <div id="container">
         <h1>Sudoku Solver</h1>
+        <p><span id="drag-enabled">Upload</span> a sudoku to solve it.</p>
         <form action="/sudoku/sudoku:solve" method="POST" enctype="multipart/form-data">
             <input type="file" name="image" id="uploadImageField">
         </form>
@@ -218,7 +253,7 @@
     </div>
 
     <footer>
-        <p>View on <a href="https://github.com/AliShazly/sudoku-py">GitHub</a>. <br> 2019 <a href="../">Ali Shazly</a>, with <a href="https://eamon.me">Eamon Ma</a>. View <a href="docs">API docs</a></p>
+        <p>View on <a href="https://github.com/AliShazly/sudoku-py">GitHub</a> or view  <a href="docs">API docs</a><br> 2019 <a href="../">Ali Shazly</a>, with <a href="https://eamon.me">Eamon Ma</a></p>
     </footer>
 
     <div id="loading-container">
@@ -260,7 +295,7 @@
             console.log(r.url);
             if(r.error) {
                 toggle(m.get("#loading-container"), "icon")
-                return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting. Error was: <pre>" + r.error + "</pre></p>";
+                return m.get("#solved").innerHTML = "<p>Unable to solve this puzzle. Try taking the picture on a flat surface, in good lighting. The error was: <pre>" + r.error + "</pre></p>";
             }
             m.get("#solved").innerHTML = "<img class=\"animated fadeIn\" id=\"solved-image\" src=\"" + r.url + "\">"
             toggle(m.get("#loading-container"), "icon")
@@ -276,8 +311,10 @@
             isDropping = !isDropping
             status = isDropping
         }
-        target.style.opacity = status ? (1) : (0)
-        target.style.zIndex = status ? (999) : (-999)
+
+        // target.style.top = status ? ("100%") : (0)
+        target.style.opacity = status ? (0.9) : (0)
+        target.style.visibility = status ? ("visible") : ("hidden")
     }
 
     const loadImage  = (files) => {
@@ -311,11 +348,22 @@
 
     const form = m.get("form")
 
-    form.onsubmit = (e) => {
-        e.preventDefault()
-        if(!m.get("#uploadImageField").value) {
-            return m.get("#solved").innerHTML = "<p>Select an image!</p>"
+    const is_touch_device = () => {
+        var prefixes = ' -webkit- -moz- -o- -ms- '.split(' ');
+        var mq = function(query) {
+            return window.matchMedia(query).matches;
         }
+
+        if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) {
+            return true;
+        }
+
+        var query = ['(', prefixes.join('touch-enabled),('), 'heartz', ')'].join('');
+        return mq(query);
+    }
+
+    if(!is_touch_device()) {
+        m.get("#drag-enabled").textContent = "Drag and drop"
     }
 
     m.get("#uploadImageField").addEventListener("change", (e) => {
