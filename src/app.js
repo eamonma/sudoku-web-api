@@ -122,16 +122,6 @@ app.post("/sudoku/sudoku:solve", upload.single("image"), async (req, res) => {
     }, 180000)
 })
 
-
-
-// PythonShell.run("./python/main.py", {
-//     mode: "text",
-//     args: ["--help"]
-// }, (e, results) => {
-//     console.log(e)
-//     console.log(results);
-// })
-
 app.listen(port, () => {
     console.log("Server up on port " + port);
     
